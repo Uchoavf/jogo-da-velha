@@ -34,11 +34,13 @@ class JogoDaVelha:
         self.nivel = int(self.nivel_var.get())
         self.jogador_humano = self.simbolo_var.get()
         self.jogador_ia = "O" if self.jogador_humano == "X" else "X"
+        self.frame_config.pack_forget()
+        self.criar_tabuleiro()
+
+    def criar_tabuleiro(self):
         self.jogador_atual = "X"
         self.inicio = time.time()
         self.tabuleiro = [[" "]*3 for _ in range(3)]
-
-        self.frame_config.pack_forget()
 
         self.frame_jogo = tk.Frame(self.master)
         self.frame_jogo.pack()
@@ -163,9 +165,7 @@ class JogoDaVelha:
 
     def reiniciar_jogo(self):
         self.frame_jogo.pack_forget()
-        self.jogador_atual = "X"
-        self.tabuleiro = [[" "]*3 for _ in range(3)]
-        self.frame_config.pack()
+        self.criar_tabuleiro()
 
 if __name__ == "__main__":
     root = tk.Tk()
