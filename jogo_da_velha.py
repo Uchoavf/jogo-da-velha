@@ -209,6 +209,7 @@ class JogoDaVelha:
         for widget in self.frame_jogo.winfo_children():
             widget.destroy()
         self.frame_jogo.pack_forget()
+        self.frame_config.pack()
         self.tela_config()
 
     def jogada_ia(self):
