@@ -1,0 +1,59 @@
+# ============================================================
+# Gitleaks — configuracao modelo (conta Uchoavf)
+# ============================================================
+# Copiar para a raiz do repo como .gitleaks.toml. Sem credencial real: os achados
+# historicos sao fixtures ficticias dos templates de teste e placeholders de doc.
+
+[extend]
+useDefault = true
+
+# Regras extras que a config default do gitleaks NAO cobre (validadas com amostras
+# sinteticas em 13/09/2026). `useDefault = true` mantem todas as regras originais.
+
+[[rules]]
+id = "telegram-bot-token-hardened"
+description = "Telegram bot token (id numerico + segredo base64url)"
+regex = '''\b\d{8,12}:AA[A-Za-z0-9_\-]{30,}\b'''
+keywords = ["telegram", "bot", "token"]
+entropy = 3.0
+
+[[rules]]
+id = "anthropic-api-key-hardened"
+description = "Chave de API da Anthropic"
+regex = '''sk-ant-[a-z0-9]{2,6}-[A-Za-z0-9_\-]{30,}'''
+keywords = ["sk-ant"]
+
+[[rules]]
+id = "mercadopago-access-token"
+description = "Access token do Mercado Pago (producao ou sandbox)"
+regex = '''\b(?:APP_USR|TEST)-\d{6,20}(?:-\d{2,12}){0,2}-[0-9a-fA-F]{20,}(?:-\d{4,12})?\b'''
+keywords = ["app_usr", "mercadopago", "mp_", "access_token"]
+
+[[rules]]
+id = "db-uri-with-password"
+description = "URI de banco de dados com senha embutida"
+regex = '''(?i)\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|amqp)://[^\s:@/]{2,64}:[^\s:@/]{3,128}@'''
+keywords = ["postgres", "mysql", "mongodb", "redis", "amqp"]
+
+[[rules]]
+id = "private-key-block"
+description = "Bloco de chave privada PEM"
+regex = '''-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY-----'''
+keywords = ["private key"]
+
+[allowlist]
+description = "Falsos positivos conhecidos e valores de teste deste repositorio"
+regexes = [
+  # Fixtures/placeholders conhecidos (nunca valores reais)
+  '''sk-ant-\.\.\.''',
+  '''sk-or-v1-\.\.\.''',
+  '''APP_USR-\.\.\.''',
+  '''APP_USR-…''',
+  '''\d{8,12}:\*\*\*''',
+  '''(?i)(chave|token|secret|senha)[^\n]{0,30}(aqui|here|your|xxx|example|exemplo|placeholder|mude|gere)''',
+  '''0123456789abcdef0123456789abcdef''',
+  '''"pgpass123"''',
+  '''(?:Nova|Outra)Senha\d{3}''',
+  # URI de banco com credencial de EXEMPLO (user:password@host, sua_senha@ etc.)
+  '''(?i):(password|passwd|senha|sua[_-]?senha|chave|secret|xxxx+|your[_-]?(password|user)|user)[^@\n]{0,30}@''',
+]
