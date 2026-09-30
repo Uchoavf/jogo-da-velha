@@ -15,3 +15,11 @@ Um clássico Jogo da Velha desenvolvido em Python com interface gráfica Tkinter
 ```bash
 python3 jogo_da_velha.py
 ```
+
+### Desenvolvimento
+A lógica do jogo e a IA ficam em `logica.py` (sem dependência de interface); a interface Tkinter fica em `jogo_da_velha.py`.
+```bash
+pip install pytest ruff
+ruff check .
+pytest
+```
