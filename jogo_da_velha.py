@@ -1,69 +1,86 @@
+import time
 import tkinter as tk
 from tkinter import messagebox
-import time
-import random
+
+import logica
+
+BG = "#2c3e50"
+FG = "#ecf0f1"
+SELECT = "#34495e"
+
 
 class JogoDaVelha:
     def __init__(self, master):
         self.master = master
         self.master.title("Jogo da Velha")
-        self.master.configure(bg="#2c3e50")
-        self.vitorias_jogador = 0
-        self.vitorias_ia = 0
+        self.master.configure(bg=BG)
+        self.vitorias_x = 0
+        self.vitorias_o = 0
         self.empates = 0
+        self.placar_chave = None
         self.jogador_humano = "X"
         self.jogador_ia = "O"
         self.jogador_atual = "X"
         self.modo = None
         self.nivel = None
         self.inicio = None
+        self.fim = True
+        self.id_ia = None
         self.botao_grid = []
-        self.tabuleiro = [[" "]*3 for _ in range(3)]
-        self.frame_config = tk.Frame(self.master, bg="#2c3e50")
+        self.tabuleiro = logica.novo_tabuleiro()
+        self.frame_config = tk.Frame(self.master, bg=BG)
         self.frame_config.pack()
+        self.frame_jogo = None
         self.tela_config()
+
+    # ---------- menu ----------
+    def _radio(self, texto, var, valor, widgets):
+        rb = tk.Radiobutton(self.frame_config, text=texto, variable=var, value=valor,
+                            bg=BG, fg=FG, selectcolor=SELECT, font=("Arial", 11))
+        rb.pack()
+        widgets.append(rb)
 
     def tela_config(self):
         for widget in self.frame_config.winfo_children():
             widget.destroy()
 
         tk.Label(self.frame_config, text="JOGO DA VELHA", font=("Arial", 20, "bold"),
-                 bg="#2c3e50", fg="#ecf0f1").pack(pady=10)
+                 bg=BG, fg=FG).pack(pady=10)
 
+        self.opcoes_ia = []
         tk.Label(self.frame_config, text="Modo de jogo:", font=("Arial", 12),
-                 bg="#2c3e50", fg="#ecf0f1").pack()
+                 bg=BG, fg=FG).pack()
         self.modo_var = tk.StringVar(value="ia")
-        tk.Radiobutton(self.frame_config, text="Vs IA", variable=self.modo_var, value="ia",
-                       bg="#2c3e50", fg="#ecf0f1", selectcolor="#34495e",
-                       font=("Arial", 11)).pack()
-        tk.Radiobutton(self.frame_config, text="2 Jogadores", variable=self.modo_var, value="2p",
-                       bg="#2c3e50", fg="#ecf0f1", selectcolor="#34495e",
-                       font=("Arial", 11)).pack()
+        modo_widgets = []
+        self._radio("Vs IA", self.modo_var, "ia", modo_widgets)
+        self._radio("2 Jogadores", self.modo_var, "2p", modo_widgets)
 
-        tk.Label(self.frame_config, text="Nível da IA:", font=("Arial", 12),
-                 bg="#2c3e50", fg="#ecf0f1").pack()
+        lbl = tk.Label(self.frame_config, text="Nível da IA:", font=("Arial", 12), bg=BG, fg=FG)
+        lbl.pack()
+        self.opcoes_ia.append(lbl)
         self.nivel_var = tk.StringVar(value="1")
-        tk.Radiobutton(self.frame_config, text="Normal", variable=self.nivel_var, value="1",
-                       bg="#2c3e50", fg="#ecf0f1", selectcolor="#34495e",
-                       font=("Arial", 11)).pack()
-        tk.Radiobutton(self.frame_config, text="Difícil", variable=self.nivel_var, value="2",
-                       bg="#2c3e50", fg="#ecf0f1", selectcolor="#34495e",
-                       font=("Arial", 11)).pack()
+        self._radio("Normal", self.nivel_var, "1", self.opcoes_ia)
+        self._radio("Difícil", self.nivel_var, "2", self.opcoes_ia)
 
-        tk.Label(self.frame_config, text="Seu símbolo:", font=("Arial", 12),
-                 bg="#2c3e50", fg="#ecf0f1").pack()
+        lbl = tk.Label(self.frame_config, text="Seu símbolo:", font=("Arial", 12), bg=BG, fg=FG)
+        lbl.pack()
+        self.opcoes_ia.append(lbl)
         self.simbolo_var = tk.StringVar(value="X")
-        tk.Radiobutton(self.frame_config, text="X (Começa)", variable=self.simbolo_var, value="X",
-                       bg="#2c3e50", fg="#ecf0f1", selectcolor="#34495e",
-                       font=("Arial", 11)).pack()
-        tk.Radiobutton(self.frame_config, text="O", variable=self.simbolo_var, value="O",
-                       bg="#2c3e50", fg="#ecf0f1", selectcolor="#34495e",
-                       font=("Arial", 11)).pack()
+        self._radio("X (Começa)", self.simbolo_var, "X", self.opcoes_ia)
+        self._radio("O", self.simbolo_var, "O", self.opcoes_ia)
 
-        btn = tk.Button(self.frame_config, text="INICIAR", font=("Arial", 14, "bold"),
-                        bg="#27ae60", fg="white", padx=20, pady=5,
-                        command=self.iniciar_jogo)
-        btn.pack(pady=15)
+        for rb in modo_widgets:
+            rb.config(command=self.atualizar_opcoes_ia)
+        self.atualizar_opcoes_ia()
+
+        tk.Button(self.frame_config, text="INICIAR", font=("Arial", 14, "bold"),
+                  bg="#27ae60", fg="white", padx=20, pady=5,
+                  command=self.iniciar_jogo).pack(pady=15)
+
+    def atualizar_opcoes_ia(self):
+        estado = "normal" if self.modo_var.get() == "ia" else "disabled"
+        for w in self.opcoes_ia:
+            w.config(state=estado)
 
     def iniciar_jogo(self):
         self.modo = self.modo_var.get()
@@ -71,246 +88,167 @@ class JogoDaVelha:
             self.nivel = int(self.nivel_var.get())
             self.jogador_humano = self.simbolo_var.get()
             self.jogador_ia = "O" if self.jogador_humano == "X" else "X"
+        chave = (self.modo, self.jogador_humano if self.modo == "ia" else None)
+        if chave != self.placar_chave:
+            self.vitorias_x = self.vitorias_o = self.empates = 0
+            self.placar_chave = chave
         self.frame_config.pack_forget()
         self.criar_tabuleiro()
 
+    # ---------- tabuleiro ----------
     def criar_tabuleiro(self):
         self.jogador_atual = "X"
-        self.inicio = time.time()
-        self.tabuleiro = [[" "]*3 for _ in range(3)]
+        self.inicio = time.monotonic()
+        self.fim = False
+        self.tabuleiro = logica.novo_tabuleiro()
 
-        self.frame_jogo = tk.Frame(self.master, bg="#2c3e50")
+        self.frame_jogo = tk.Frame(self.master, bg=BG)
         self.frame_jogo.pack()
 
-        self.frame_placar = tk.Frame(self.frame_jogo, bg="#2c3e50")
+        self.frame_placar = tk.Frame(self.frame_jogo, bg=BG)
         self.frame_placar.pack(pady=5)
-
-        self.label_placar = tk.Label(
-            self.frame_placar,
-            text=self.texto_placar(),
-            font=("Arial", 12, "bold"), bg="#2c3e50", fg="#ecf0f1"
-        )
+        self.label_placar = tk.Label(self.frame_placar, text=self.texto_placar(),
+                                     font=("Arial", 12, "bold"), bg=BG, fg=FG)
         self.label_placar.pack()
 
-        self.label_vez = tk.Label(
-            self.frame_jogo, text=self.texto_vez(),
-            font=("Arial", 12), bg="#2c3e50", fg="#f1c40f"
-        )
+        self.label_vez = tk.Label(self.frame_jogo, text=self.texto_vez(),
+                                  font=("Arial", 12), bg=BG, fg="#f1c40f")
         self.label_vez.pack(pady=5)
 
-        self.frame_tab = tk.Frame(self.frame_jogo, bg="#2c3e50")
+        self.frame_tab = tk.Frame(self.frame_jogo, bg=BG)
         self.frame_tab.pack()
 
         self.botao_grid = []
         for i in range(3):
             linha = []
             for j in range(3):
-                btn = tk.Button(
-                    self.frame_tab, text=" ", font=("Arial", 28, "bold"),
-                    width=3, height=1, bg="#ecf0f1", fg="#2c3e50",
-                    activebackground="#bdc3c7",
-                    command=lambda x=i, y=j: self.jogada_humana(x, y)
-                )
+                btn = tk.Button(self.frame_tab, text=" ", font=("Arial", 28, "bold"),
+                                width=3, height=1, bg=FG, fg=BG,
+                                activebackground="#bdc3c7",
+                                command=lambda x=i, y=j: self.jogada_humana(x, y))
                 btn.grid(row=i, column=j, padx=3, pady=3)
                 linha.append(btn)
             self.botao_grid.append(linha)
 
-        frame_botoes = tk.Frame(self.frame_jogo, bg="#2c3e50")
+        frame_botoes = tk.Frame(self.frame_jogo, bg=BG)
         frame_botoes.pack(pady=10)
-
-        btn_desistir = tk.Button(
-            frame_botoes, text="Desistir", font=("Arial", 12),
-            bg="#e74c3c", fg="white", padx=15,
-            command=self.desistir
-        )
-        btn_desistir.pack(side=tk.LEFT, padx=5)
-
-        btn_menu = tk.Button(
-            frame_botoes, text="Menu", font=("Arial", 12),
-            bg="#3498db", fg="white", padx=15,
-            command=self.voltar_menu
-        )
-        btn_menu.pack(side=tk.LEFT, padx=5)
+        tk.Button(frame_botoes, text="Desistir", font=("Arial", 12), bg="#e74c3c",
+                  fg="white", padx=15, command=self.desistir).pack(side=tk.LEFT, padx=5)
+        tk.Button(frame_botoes, text="Menu", font=("Arial", 12), bg="#3498db",
+                  fg="white", padx=15, command=self.voltar_menu).pack(side=tk.LEFT, padx=5)
 
         if self.modo == "ia" and self.jogador_ia == "X":
-            self.master.after(500, self.jogada_ia)
+            self.agendar_ia()
 
     def texto_placar(self):
         if self.modo == "ia":
-            return f"Você: {self.vitorias_jogador}  |  IA: {self.vitorias_ia}  |  Empates: {self.empates}"
-        return f"Jogador X: {self.vitorias_jogador}  |  Jogador O: {self.vitorias_ia}  |  Empates: {self.empates}"
+            x_humano = self.jogador_humano == "X"
+            voce = self.vitorias_x if x_humano else self.vitorias_o
+            ia = self.vitorias_o if x_humano else self.vitorias_x
+            return f"Você: {voce}  |  IA: {ia}  |  Empates: {self.empates}"
+        return (f"Jogador X: {self.vitorias_x}  |  Jogador O: {self.vitorias_o}  |  "
+                f"Empates: {self.empates}")
 
     def texto_vez(self):
         if self.modo == "ia":
-            if self.jogador_atual == self.jogador_humano:
-                return "Sua vez"
-            return "Vez da IA..."
+            return "Sua vez" if self.jogador_atual == self.jogador_humano else "Vez da IA..."
         return f"Vez do Jogador {self.jogador_atual}"
 
     def atualizar_placar(self):
         self.label_placar.config(text=self.texto_placar())
 
-    def jogada_humana(self, i, j):
-        if self.tabuleiro[i][j] != " ":
-            return
+    def registrar_vitoria(self, simbolo):
+        if simbolo == "X":
+            self.vitorias_x += 1
+        else:
+            self.vitorias_o += 1
 
-        if self.modo == "ia" and self.jogador_atual != self.jogador_humano:
-            return
+    def nome_vencedor(self, simbolo):
+        if self.modo == "ia":
+            if simbolo == self.jogador_humano:
+                return f"Parabéns! Você ({simbolo}) venceu!"
+            return f"A IA ({simbolo}) venceu!"
+        return f"Jogador {simbolo} venceu!"
 
-        self.tabuleiro[i][j] = self.jogador_atual
-        self.botao_grid[i][j].config(text=self.jogador_atual, state="disabled")
+    def jogar(self, i, j):
+        """Aplica a jogada do jogador atual; retorna True se a partida terminou."""
+        simbolo = self.jogador_atual
+        self.tabuleiro[i][j] = simbolo
+        self.botao_grid[i][j].config(text=simbolo, state="disabled")
 
-        resultado = self.verifica_vencedor(self.jogador_atual)
-        if resultado:
-            self.destacar_vencedor(resultado)
-            if self.modo == "ia":
-                if self.jogador_atual == self.jogador_humano:
-                    self.vitorias_jogador += 1
-                    msg = f"Parabéns! Você ({self.jogador_atual}) venceu!"
-                else:
-                    self.vitorias_ia += 1
-                    msg = f"A IA ({self.jogador_atual}) venceu!"
-            else:
-                if self.jogador_atual == "X":
-                    self.vitorias_jogador += 1
-                else:
-                    self.vitorias_ia += 1
-                msg = f"Jogador {self.jogador_atual} venceu!"
-            self.fim_de_jogo(msg)
-            return
-
-        if self.tabuleiro_cheio():
+        celulas = logica.celulas_vencedoras(self.tabuleiro, simbolo)
+        if celulas:
+            self.destacar_vencedor(celulas)
+            self.registrar_vitoria(simbolo)
+            self.fim_de_jogo(self.nome_vencedor(simbolo))
+            return True
+        if logica.tabuleiro_cheio(self.tabuleiro):
             self.empates += 1
             self.fim_de_jogo("Empate!")
+            return True
+
+        self.jogador_atual = "O" if simbolo == "X" else "X"
+        self.label_vez.config(text=self.texto_vez())
+        return False
+
+    def jogada_humana(self, i, j):
+        if self.fim or self.tabuleiro[i][j] != logica.VAZIO:
             return
+        if self.modo == "ia" and self.jogador_atual != self.jogador_humano:
+            return
+        if not self.jogar(i, j) and self.modo == "ia":
+            self.agendar_ia()
 
-        if self.modo == "ia":
-            self.jogador_atual = self.jogador_ia
-            self.label_vez.config(text=self.texto_vez())
-            self.master.after(500, self.jogada_ia)
+    def agendar_ia(self):
+        self.cancelar_ia()
+        self.id_ia = self.master.after(500, self.jogada_ia)
+
+    def cancelar_ia(self):
+        if self.id_ia is not None:
+            self.master.after_cancel(self.id_ia)
+            self.id_ia = None
+
+    def jogada_ia(self):
+        self.id_ia = None
+        if self.fim or self.jogador_atual != self.jogador_ia:
+            return
+        if self.nivel == 1:
+            i, j = logica.jogada_aleatoria(self.tabuleiro)
         else:
-            self.jogador_atual = "O" if self.jogador_atual == "X" else "X"
-            self.label_vez.config(text=self.texto_vez())
+            i, j = logica.melhor_jogada(self.tabuleiro, self.jogador_ia, self.jogador_humano)
+        self.jogar(i, j)
 
+    def destacar_vencedor(self, celulas):
+        for i, j in celulas:
+            self.botao_grid[i][j].config(bg="#27ae60", fg="white")
+
+    # ---------- fluxo ----------
     def desistir(self):
+        if self.fim:
+            return
         if self.modo == "ia":
-            self.vitorias_ia += 1
+            vencedor = self.jogador_ia
             msg = "Você desistiu! A IA venceu."
         else:
             vencedor = "O" if self.jogador_atual == "X" else "X"
-            if vencedor == "X":
-                self.vitorias_jogador += 1
-            else:
-                self.vitorias_ia += 1
             msg = f"Jogador {self.jogador_atual} desistiu! Jogador {vencedor} venceu."
+        self.registrar_vitoria(vencedor)
         self.fim_de_jogo(msg)
 
     def voltar_menu(self):
-        for widget in self.frame_jogo.winfo_children():
-            widget.destroy()
-        self.frame_jogo.pack_forget()
+        self.cancelar_ia()
+        self.fim = True
+        self.frame_jogo.destroy()
         self.frame_config.pack()
         self.tela_config()
 
-    def jogada_ia(self):
-        if self.jogador_atual != self.jogador_ia:
-            return
-
-        if self.nivel == 1:
-            i, j = self.jogada_ia_normal()
-        else:
-            i, j = self.jogada_ia_dificil()
-
-        self.tabuleiro[i][j] = self.jogador_ia
-        self.botao_grid[i][j].config(text=self.jogador_ia, state="disabled")
-
-        resultado = self.verifica_vencedor(self.jogador_ia)
-        if resultado:
-            self.destacar_vencedor(resultado)
-            self.vitorias_ia += 1
-            self.fim_de_jogo(f"A IA ({self.jogador_ia}) venceu!")
-            return
-
-        if self.tabuleiro_cheio():
-            self.empates += 1
-            self.fim_de_jogo("Empate!")
-            return
-
-        self.jogador_atual = self.jogador_humano
-        self.label_vez.config(text=self.texto_vez())
-
-    def jogada_ia_normal(self):
-        possiveis = [(i, j) for i in range(3) for j in range(3) if self.tabuleiro[i][j] == " "]
-        return random.choice(possiveis)
-
-    def minimax(self, tabuleiro, jogador):
-        if self.verifica_vencedor_no_tab(tabuleiro, self.jogador_ia):
-            return {'pontuacao': 1}
-        elif self.verifica_vencedor_no_tab(tabuleiro, self.jogador_humano):
-            return {'pontuacao': -1}
-        elif all(all(c != " " for c in linha) for linha in tabuleiro):
-            return {'pontuacao': 0}
-
-        movimentos = []
-        for i in range(3):
-            for j in range(3):
-                if tabuleiro[i][j] == " ":
-                    tabuleiro[i][j] = jogador
-                    if jogador == self.jogador_ia:
-                        resultado = self.minimax(tabuleiro, self.jogador_humano)
-                        movimentos.append({'i': i, 'j': j, 'pontuacao': resultado['pontuacao']})
-                    else:
-                        resultado = self.minimax(tabuleiro, self.jogador_ia)
-                        movimentos.append({'i': i, 'j': j, 'pontuacao': resultado['pontuacao']})
-                    tabuleiro[i][j] = " "
-
-        if jogador == self.jogador_ia:
-            return max(movimentos, key=lambda x: x['pontuacao'])
-        else:
-            return min(movimentos, key=lambda x: x['pontuacao'])
-
-    def jogada_ia_dificil(self):
-        mov = self.minimax([linha[:] for linha in self.tabuleiro], self.jogador_ia)
-        return mov['i'], mov['j']
-
-    def verifica_vencedor(self, jogador):
-        tab = self.tabuleiro
-        for i, linha in enumerate(tab):
-            if all(s == jogador for s in linha):
-                return [(i, j) for j in range(3)]
-        for j in range(3):
-            if all(tab[i][j] == jogador for i in range(3)):
-                return [(i, j) for i in range(3)]
-        if all(tab[i][i] == jogador for i in range(3)):
-            return [(i, i) for i in range(3)]
-        if all(tab[i][2 - i] == jogador for i in range(3)):
-            return [(i, 2 - i) for i in range(3)]
-        return None
-
-    def verifica_vencedor_no_tab(self, tab, jogador):
-        for linha in tab:
-            if all(s == jogador for s in linha):
-                return True
-        for col in range(3):
-            if all(tab[linha][col] == jogador for linha in range(3)):
-                return True
-        if all(tab[i][i] == jogador for i in range(3)):
-            return True
-        if all(tab[i][2 - i] == jogador for i in range(3)):
-            return True
-        return False
-
-    def destacar_vencedor(self, celulas):
-        cor = "#27ae60"
-        for i, j in celulas:
-            self.botao_grid[i][j].config(bg=cor, fg="white")
-
-    def tabuleiro_cheio(self):
-        return all(all(celula != " " for celula in linha) for linha in self.tabuleiro)
-
     def fim_de_jogo(self, mensagem):
-        fim = time.time()
-        tempo_jogo = fim - self.inicio
+        self.fim = True
+        self.cancelar_ia()
+        for linha in self.botao_grid:
+            for btn in linha:
+                btn.config(state="disabled")
+        tempo_jogo = time.monotonic() - self.inicio
         self.atualizar_placar()
         jogar_novamente = messagebox.askyesno(
             "Fim de jogo",
@@ -319,13 +257,12 @@ class JogoDaVelha:
         if jogar_novamente:
             self.reiniciar_jogo()
         else:
-            self.master.destroy()
+            self.voltar_menu()
 
     def reiniciar_jogo(self):
-        for widget in self.frame_jogo.winfo_children():
-            widget.destroy()
-        self.frame_jogo.pack_forget()
+        self.frame_jogo.destroy()
         self.criar_tabuleiro()
+
 
 if __name__ == "__main__":
     root = tk.Tk()
