@@ -3,7 +3,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import logica as lg  # noqa: E402
+import logica as lg
 
 
 def tab_de(texto):
