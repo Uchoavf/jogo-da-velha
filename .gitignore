@@ -3,3 +3,13 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .venv/
+
+# Secrets / credenciais
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.jks
+*.keystore
+credentials*.json
